@@ -1,0 +1,76 @@
+version: '3'
+
+services:
+  poll:
+    # builds your poll image;
+    build: poll/
+    # redirects ports 5000 of the host to the ports 80 of the container.
+    ports:
+      - "5000:80"
+    depends_on:
+      - redis
+    networks:
+      - poll-tier
+    restart: unless-stopped
+
+  redis:
+    # uses an existing official image of Redis;
+    image: redis
+    # opens ports 6379.
+    ports:
+      - "6379:6379"
+    networks:
+      - poll-tier
+      - back-tier
+    restart: unless-stopped
+
+  worker:
+    # builds your worker image.
+    build: worker/
+    depends_on:
+      - redis
+      - db
+    networks:
+      - back-tier
+    restart: unless-stopped
+
+  db:
+    # uses an existing official image of PostgreSQL;
+    image: postgres #:9.4
+    volumes:
+      - db-data:/var/lib/postgresql/data 
+      # has its database schema created during container first start.
+      - ./path/to/init.sql:/docker-entrypoint-initdb.d/init.sql
+    # represents the database that will be used by the apps;
+    environment:
+      - POSTGRES_USER=cmatthew
+      - POSTGRES_PASSWORD=yoo
+      - POSTGRES_DB=mydatabase
+    networks:
+      - back-tier
+      - result-tier
+    restart: unless-stopped
+
+  result:
+    # builds your result image;
+    build: result/
+    # redirects ports 5001 of the host to the ports 80 of the container.
+    ports:
+      - "5001:80"
+    # Databases must be launched before the services that use them, because these services are depending on them.
+    depends_on:
+      - db
+    networks:
+      - result-tier
+    restart: unless-stopped
+
+networks:
+  poll-tier:
+  # result-tier to allow result to communicate with db.
+  result-tier:
+  # back-tier to allow worker to communicate with redis and db.
+  back-tier:
+
+volumes:
+  # db-data which allows the database’s data to be persistent, if the container dies.
+  db-data:
