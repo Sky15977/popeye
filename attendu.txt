@@ -1,2 +1,0 @@
-créé 3 image docker
-trouver la bonne version (peuvent ne pas etre compatible)
